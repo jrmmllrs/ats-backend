@@ -1,7 +1,9 @@
 // routes/calendarRoutes.js
 const express = require("express");
 const router = express.Router();
-const { setCredentialsFromCookies } = require("../../middlewares/calendarAuthMiddleware");
+const {
+  setCredentialsFromCookies,
+} = require("../../middlewares/calendarAuthMiddleware");
 const {
   getSubscribedCalendars,
   getAppointments,

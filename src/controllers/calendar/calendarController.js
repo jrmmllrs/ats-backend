@@ -33,7 +33,6 @@ exports.getAppointments = async (req, res) => {
 
     const response = await calendar.events.list({
       calendarId,
-      timeMin: new Date().toISOString(),
       maxResults: 2500,
       singleEvents: true,
       orderBy: "startTime",
