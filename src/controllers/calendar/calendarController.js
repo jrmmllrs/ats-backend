@@ -1,13 +1,39 @@
+// controllers/calendar/calendarController.js
 const { google } = require("../../config/googleCalendarConfig");
 
+/**
+ * Get all calendars user has access to (primary + shared + subscribed)
+ */
+exports.getSubscribedCalendars = async (req, res) => {
+  try {
+    const calendar = google.calendar({
+      version: "v3",
+      auth: req.oauthClient,
+    });
+
+    const response = await calendar.calendarList.list();
+    res.json({ calendars: response.data.items });
+  } catch (err) {
+    console.error("Fetch subscribed calendars error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Get events of a specific calendar (default = primary)
+ */
 exports.getAppointments = async (req, res) => {
   try {
-    const calendar = google.calendar({ version: "v3", auth: req.oauthClient });
+    const calendarId = req.query.calendarId || "primary";
+
+    const calendar = google.calendar({
+      version: "v3",
+      auth: req.oauthClient,
+    });
 
     const response = await calendar.events.list({
-      calendarId: "primary",
-      timeMin: new Date().toISOString(),
-      maxResults: 20,
+      calendarId,
+      maxResults: 2500,
       singleEvents: true,
       orderBy: "startTime",
     });
@@ -22,10 +48,10 @@ exports.getAppointments = async (req, res) => {
 exports.createEvent = async (req, res) => {
   try {
     const calendar = google.calendar({ version: "v3", auth: req.oauthClient });
-    const { event } = req.body;
+    const { event, calendarId = "primary" } = req.body;
 
     const response = await calendar.events.insert({
-      calendarId: "primary",
+      calendarId,
       resource: event,
     });
 
@@ -39,12 +65,12 @@ exports.createEvent = async (req, res) => {
 exports.bulkInsertEvents = async (req, res) => {
   try {
     const calendar = google.calendar({ version: "v3", auth: req.oauthClient });
-    const { events } = req.body;
+    const { events, calendarId = "primary" } = req.body;
     const results = [];
 
     for (const ev of events) {
       const r = await calendar.events.insert({
-        calendarId: "primary",
+        calendarId,
         resource: ev,
       });
       results.push(r.data);
