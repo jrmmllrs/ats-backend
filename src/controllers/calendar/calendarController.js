@@ -21,7 +21,7 @@ exports.getSubscribedCalendars = async (req, res) => {
 
 /**
  * Get events of a specific calendar (default = primary),
- * now returns ALL events (past + ongoing + future).
+ * now returns ALL events (past + ongoing + future) with pagination.
  */
 exports.getAppointments = async (req, res) => {
   try {
@@ -32,20 +32,30 @@ exports.getAppointments = async (req, res) => {
       auth: req.oauthClient,
     });
 
-    /**
-     * ✅ MAIN CHANGE:
-     * Removed timeMin so we get *all events* (including past).
-     */
-    const response = await calendar.events.list({
-      calendarId,
-      maxResults: 2500,
-      singleEvents: true,
-      orderBy: "startTime",
-      // ❌ no timeMin so past events are included
-    });
+    let events = [];
+    let pageToken;
 
-    // We don’t filter anymore — return everything
-    const events = response.data.items || [];
+    // ✅ 3 months past to 3 months future
+    const timeMin = new Date();
+    timeMin.setMonth(timeMin.getMonth() - 3);
+
+    const timeMax = new Date();
+    timeMax.setMonth(timeMax.getMonth() + 3);
+
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        maxResults: 2500,
+        singleEvents: true,
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        orderBy: "startTime",
+        pageToken,
+      });
+
+      events = events.concat(response.data.items || []);
+      pageToken = response.data.nextPageToken;
+    } while (pageToken);
 
     res.json({ events });
   } catch (err) {
@@ -53,6 +63,7 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 /**
  * Create a single event in a calendar (default = primary)
@@ -98,7 +109,7 @@ exports.bulkInsertEvents = async (req, res) => {
   }
 };
 
-// ✅ Make sure you export all four functions
+// ✅ Export all functions
 module.exports = {
   getSubscribedCalendars: exports.getSubscribedCalendars,
   getAppointments: exports.getAppointments,
